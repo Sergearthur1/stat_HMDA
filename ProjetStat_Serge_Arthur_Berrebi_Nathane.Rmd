@@ -1,0 +1,698 @@
+---
+title: "Projet Statistique"
+output: html_document
+author: "Rédigé par Berrebi Nathane et Serge Arthur et encadré par Sportisse Aude "
+---
+
+# Sommaire
+
+##    I- Introduction
+##    II- Analyse univariée
+##    III- Analyse bivariée
+##    IV- Régression linéaire simple
+##    V- Régression linéaire multiple
+##    VI- ANOVA
+##    VII- Conclusion 
+
+# Introduction
+
+L'objet de cette étude est d'analyser la base de données _The boston HMDA_, qui recense les cas d'autorisation de prêts bancaires, selon la loi américaine, dans le cadre d'une transaction hypothécaire. Le jeu de données contient 2381 observations et 13 variables.
+
+* Dir : dette / revenu total  
+
+* Hir : Frais de logements / revenu total
+
+* lvr : rapport entre la taille du prêt et la valeur estimée du bien
+
+* ccs : côte de crédit à  la consommation de 1 à  6 (une faible valeur étant une bonne cote)
+
+* mcs : côte de crédit hypothécaire de 1 à  4 (une faible valeur étant une bonne cote)
+
+* pbcr : dossier de mauvais crédit public?
+
+* dmi : assurance hypothécaire refusée?
+
+* self  : travailleur indépendant ?
+
+* single : le demandeur est-il célibataire?
+
+* Uria: 1989 Taux de chômage dans le secteur de la requérante dans le Massachusetts
+
+* condominium : l'unité est-elle un condominium? 
+
+* Black: le demandeur est-il noir?
+
+* deny: demande d'hypothèque refusée?
+
+
+```{r , echo= FALSE, results="hide"}
+library(readr)
+hmda <- read_csv("Hmda.csv")
+data <- hmda[,-1]
+summary(data)
+```
+
+
+# Analyse univariée
+
+Nous ne présentons pas toutes les variables qualitatives car celles-ci sont trop nombreuses, mais l'étude de chacune a été globalement similaire. De plus, certains graphes qui seront traités ne seront pas affichés.
+
+## Variables continues
+
+### Dir
+
+C'est la variable **Dir** que nous tentons de prédire tout le long de cette étude.
+
+```{r, echo=FALSE , results= "hide"}
+#hist(data$dir, freq = F)
+#curve(dnorm(x, mean(data$dir), sd(data$dir)), add = T, col='blue')
+
+plot(data$dir, main="Nuage de points de Dir", ylab = "Dir")
+qqnorm((data$dir-mean(data$dir))/sd(data$dir))
+abline(0,1)
+#boxplot(data$dir)
+library(e1071)
+kurtosis(((data$dir)-mean(data$dir))/sd(data$dir))
+
+```
+
+L'histogramme et la fonction de répartition indiquent à première vue un lien  entre la distribution de _Dir_ est celle d'une loi Normale, celle ci semble symétrique et la loi est clairement continue. Le qq-norm pourrait être pas mal si on supprimait les quelques valeurs significativement étranges.
+
+Etudions la tendance centrale, qui ressort nettement de tous nos graphiques. Celle-ci a une moyenne qui se trouve autour du point 0.33 (estimé par la moyenne empirique) et la médiane empirique vaut aussi 0.33, ce qui corrobore l'hypothèse d'une loi symétrique. 
+
+Nous choisissons de supprimer à l'œil nu les quelques valeurs (au nombre de 5) qui nous semblent trop extrêmes (ce sont d'ailleurs des valeurs qui seront définies comme aberrantes plus tard).
+
+```{r, echo=FALSE , results= "hide"}
+data_ajuste<-data[-c(621, 1095, 1321, 1928, 1929),]
+
+#hist(data_ajuste$dir, freq = F)
+#curve(dnorm(x, mean(data_ajuste$dir), sd(data_ajuste$dir)), add = T, col='blue')
+
+#qqnorm((data_ajuste$dir-mean(data_ajuste$dir))/sd(data_ajuste$dir))
+#abline(0,1)
+library(e1071)
+kurtosis(((data_ajuste$dir)-mean(data_ajuste$dir))/sd(data_ajuste$dir))
+
+boxplot(data_ajuste$dir, main="Dir") #, rug(data$dir, side=3 ,col="red")
+```
+
+En supprimant quelques valeurs qui n'ont pas l'air de suivre la même distribution que les autres points, on remarque avec le nouveau qq-norm (qui n'est pas affiché) que ça ajuste plus une loi Normale; de plus le coefficient d'aplatissement a nettement baissé en supprimant ces quelques valeurs. On est passé de plus de 170 à 5.28. Mais ils semblerait d'après le boxplot que quelques valeurs aberrantes sont toujours présente dans les données, on pourrait donc approcher encore mieux une loi Normale en les supprimant aussi mais mieux vaut de ne pas trop "influencer les données". L'hypothèse de la loi Normale est donc une option retenue pour cette variable.
+
+### Hir
+
+```{r, echo=FALSE , results= "hide"}
+#hist(data$hir, freq = F)
+#curve(dnorm(x, mean(data$hir), sd(data$hir)), add = T, col='blue')
+
+plot(ecdf(data$hir), main="Fonction de Répartition de Hir")
+curve(pnorm(x, mean(data$hir), sd(data$hir)), add = T, col ='blue')
+
+qqnorm((data$hir-mean(data$hir))/sd(data$hir) )
+abline(0,1)
+library(e1071)
+kurtosis(((data$hir)-mean(data$hir))/sd(data$hir))
+```
+
+_Hir_ est une variable continue (on le voit à l'aide de la fonction de répartition présentée plus haut).
+Le comportement de _Hir_ est assez semblable à celui de _Dir_; on y retrouve une forte ressemblance avec une loi Normale malgré la présence de certains points qui viennent faire tâche. Analysons la distribution de _hir_ en supprimant quelques valeurs.
+
+```{r, echo=FALSE , results= "hide"}
+#hist(data_ajuste$hir, freq = F)
+#curve(dnorm(x, mean(data_ajuste$hir), sd(data_ajuste$hir)), add = T, col='blue')
+
+#qqnorm((data_ajuste$hir-mean(data_ajuste$hir))/sd(data_ajuste$hir) )
+#abline(0,1)
+library(e1071)
+kurtosis(((data_ajuste$hir)-mean(data_ajuste$hir))/sd(data_ajuste$hir))
+
+
+```
+
+Tout comme pour la variable _dir_, en supprimant certaines valeur on trouve que la distribution de _hir_ est encore plus similaire à celle d'une loi Normale; de plus,  le coefficient d'aplatissement est passé de 270 à 3.
+
+### LVR
+
+Concernant la variable _Lvr_, les même remarques peuvent être faites.
+
+## Variables discrètes
+
+### Uria
+
+```{r, echo=FALSE , results= "hide"}
+
+plot(ecdf(data$uria), main="Fonction de Répartition Uria")  
+boxplot(data$uria, main="uria") #, rug(data$dir, side=3 ,col="red")
+```
+
+Au premier abord on pourrait croire que la variable _uria_ est continue car elle représente le taux de chômage. Cependant on peut voir que la fonction de répartition empirique est fortement "étagée" et donc la variable _uria_ prend un nombre fini de valeurs. D'où le choix de prendre la variable _uria_ comme discrète.
+
+### Deny
+```{r, echo=FALSE , results= "hide"}
+df = data
+df$deny <- (data$deny=='yes')
+plot(ecdf(df$deny), main = "Fonction de répartition de Deny")
+
+```
+
+On observe que la classe _deny_ n'est pas équirépartie car plus de 80% des personnes étudié on reçu leur demande de prêt d'hypothèque refusée. Cette variable est très importante dans ce jeu donnée, c'est la réponse à la demande du prêt hypothécaire.
+C'est elle qu'on voudrait idéalement analyser, mais dans cette UE on ne le fera pas car la régression logistique n'est pas au programme du projet.
+
+Nous tenterons donc d'estimer la variable _Dir_ qui est le rapport entre la dette du demandeur du prêt avec ses revenus totaux.
+
+# Analyse bivariée
+
+```{r, echo=FALSE, results="hide"}
+df = hmda[,-1]
+df<- df[,-4:-13]
+cor(df)
+pairs(df)
+```
+
+On remarque une forte corrélation entre _dir_ et _hir_ (le coefficient de corrélation est de 0.78 et leur points semblent à peu près s'aligner sur une droite). A l'inverse, la variable _lvr_  est peu corrélée avec les deux autres variables (les coefficients de corrélations sont 0.156 avec _dir_ et 0.12 avec _hir_).
+Dans l'objectif de faire une régression linéaire simple il vaut mieux, au premier abord, utiliser _hir_ pour estimer _dir_. Nous vérifierons cette supposition en comparant les deux modèles.
+
+# Régression Linéaire
+
+### Régression Dir et Hir
+
+Pour cette première étude, nous essayons de prédire le ratio de la dette sur le revenu total ( _Dir_ ) avec le ratio des frais de logement sur le revenu total ( _Hir_ ). Nous effectuons donc une régression linéaire, en supposant vrais (nous les vérifierons dans l'analyse) les hypothèses du modèle gaussien. Nous allons donc construire un modèle linéaire avec _hir_ et _lvr_ comme variables explicatives et _dir_ comme variable à expliquer.
+Voici le résumé de cette première régression linéaire.
+
+```{r, echo=FALSE}
+mod.simple<-lm(data$dir~data$hir, data=data)
+summary(mod.simple)
+
+```
+
+Les p-value associées aux tests de significativité de beta~0~ et beta~1~ sont tous les deux inférieurs à e^16^.
+On rejette donc H~o~ sans scrupule pour les deux tests, on  en conclut que les deux coefficients ont un réel impact.
+
+Analysons donc cette régression, vérifie-t-elle les hypothèses du modèle linéaire Gaussien?
+
+```{r, echo=FALSE, results="hide"}
+plot(data$hir,data$dir,  xlab ="Hir", ylab="Dir",main="Regression linéaire simple")
+abline(mod.simple, col='green')
+```
+
+Tout d'abord on observe que la plupart des variables explicatives sont inférieur à 1 et que celles supérieur à 1 sont mal ajustés par le modèle, pour améliorer la régression, linéaire on peut supprimer les point levier quitte à se restreindre à un modèle linéaire local.
+
+On observe que la plupart des observations sont supérieur à la droite de régression ce qui est surement causé par des valeurs aberrantes et des points leviers; pour améliorer le modèle il faudra peut être supprimer ces valeurs.
+
+Analysons donc cest points qui nous semblent différents.
+
+
+```{r, echo=FALSE, results="hide"}
+n=length(data$hir)
+X=data$hir
+H=X%*%solve(t(X)%*%X)%*%t(X)
+d<-diag(H)
+
+levier<-(1:n)[d>(3/n)]
+plot(d, col='blue', main = "Données", xlab='Index', ylab='Points leviers hir' )
+points(levier,d[levier],col='red')
+
+
+```
+
+Comme prévu, les valeurs suspectes détectées depuis le départ sont bien des points leviers cependant on observe qu'il y a d'autres points leviers dont la valeur du coefficient diagonale associé est moins grande mais supérieur au seuil de 3*p/n (ici p=1).
+
+Continuons en analysant les résidus studentisés et donc les valeurs aberrantes.
+D'après le théorème du cours, si les résidus εi suivent la loi normale  N(0,σ2) , alors les résidus studentisés suivent la loi de Student  T(n−p−1) . Commençons par calculer les quantiles d'ordre  i/n  de la loi  T(n−p−1) , puis traçons un QQ-plot.
+Pour valider le modèle linéaire il faut que les erreurs soient gaussiennes et si c'est le cas alors les résidus studentisé suivent une loi de Student.
+
+Il faudrait aussi en théorie montrer que X soit de rang plein mais on l'admettra pour cette étude.
+
+
+```{r, echo=FALSE, results="hide"}
+residu.simple <- rstudent(mod.simple)
+length(residu.simple)
+n <- length(data$dir)
+ID<-(1:n)[abs(residu.simple)>2]
+
+
+plot(1:n,residu.simple,col='blue',xlab='Index',ylab='Résidus studentisés', main = "Valeurs aberrantes")
+points(ID,residu.simple[ID],col='red')
+abline(-2,0)
+abline(2,0)
+length(ID)
+n*0.05
+
+quant.t2 <- qt((1:n)/n,n-3)
+plot(quant.t2, sort(residu.simple), xlab = 'Student T(n-p-1)',
+     ylab = 'Quantiles empiriques des résidus', main = 'QQ-plot des résidus')
+abline(0, 1, col ='blue')
+
+```
+
+
+On peut constater qu'il y a beaucoup plus de valeurs aberrantes que de points leviers. Cependant les valeurs aberrantes sont les lignes du dataframe dont le coefficient studentisé associé appartient à la région de rejet du test, or le test est de niveaux 5, il est donc normal qu'environ 5% des valeurs soit rejeté. Dans notre cas on a 95 valeurs aberrantes, ce qui est inférieur au 5% attendus (~119), donc l'hypothèse de normalité des résidus semble être en bonne voie dans notre cas.
+Cependant, on sait que si les résidus  εi  suivent la loi normale  N(0,σ2) , alors les résidus studentisés suivent la loi de Student  T(n−p−1). Mais l'alignement des points sur la première bissectrice du QQ-plot est mauvais, ce qui infirme l'hypothèse selon laquelle les résidus théoriques  εi  suivent la loi normale  N(0,σ2). L'hypothèse ne semble donc pas être vérifiée. Approfondissons un peu.
+
+
+```{r, echo=FALSE, results="hide"}
+par(mfrow = c(2,2))
+plot(1:n,residu.simple,main="résidus studentisés par rapport au temps",xlab="temps",ylab="residu studentisé")
+lines(lowess(1:n,residu.simple),col="blue")
+plot(data$hir,residu.simple, main="residu studentisé par rapport à hir",xlab="hir",ylab="residu studentisé")
+lines(lowess(data$hir,residu.simple),col="blue")
+plot(data$dir,residu.simple, main="residu studentisé par rapport à dir",xlab="dir",ylab="residu studentisé")
+lines(lowess(data$dir,residu.simple),col="blue")
+```
+
+Les deux premiers graphes semblent montrer une indépendance des résidus studentisés, cependant sur le troisième graphe on remarque une tendance à la hausse et une forme de cône sur les résidus. Cela démontre un manque d'homoscédasticité des résidus. Une solution pourrait être de rajouter des variables explicatives. 
+
+
+Etudions à présent la distance de Cook.
+
+```{r, echo=FALSE , results= "hide"}
+reg<-mod.simple
+p <- reg$rank
+s1 <- qf(0.5,p,n-p)
+s2 <- qf(0.1,p,n-p)
+cook <- cooks.distance(reg)
+ID2 <- (1:n)[cook> s2]
+plot(1:n, cook, main="Distance de Cook", xlab='Index',ylab='Distance de Cook')
+
+abline(s2,0,lty=2)
+abline(s1,0,lty=3)
+
+```
+
+On note que les quelques points (au nombre de 5) qui ont une distance de Cook inquiétante ont tous déjà été repéré avec les test précédents donc nous ne nous attarderons pas sur ce point.
+
+Voyons maintenant si la régression linéaire associé aux données "nettoyés" est meilleure. Afin de nettoyer, nous supprimons l'ensemble des valeurs aberrantes et les points levier. Nous rappelons qu'étant donné que de nombreuses valeurs supérieur à 1 ont était supprimé il est certain que le nouveau modèle va moins bien estimer les grande valeurs.
+mais pour faire des prédictions sur des valeurs en entrée entre 0 et 1 il est probable que le nouveau modèle soit meilleur.
+
+```{r, echo=FALSE, results="hide"}
+bad_value=union(ID,levier)
+new_data=data[-(bad_value),]
+dim(data)
+dim(new_data)
+new_mod.simple<-lm(dir~hir,data=new_data)
+summary(new_mod.simple)
+plot(data$hir,data$dir, main= "regression linéaire", xlab= "Dir", ylab="Hir")
+abline(mod.simple, col="green")
+abline(new_mod.simple, col='blue')
+```
+
+La droite de regression est encore moins pertinente et les tests sont aussi rejetés mais à un niveaux plus faible pour la constante.
+Vérifions mathématiquement que le modèle avec les valeurs aberrantes est bel et bien plus pertinent. On compare les EQM par rapport à un jeu de test (celui-ci est composé de 30% des données auxquelles on a retiré les valeurs aberrantes).
+
+
+##### Significativité des valeurs aberrantes:
+
+```{r, echo=FALSE , results= "hide"}
+#on crée le jeu de valeurs aberrantes
+#valeurid <- which(ID)
+#valeurlev <- which(levier)
+#valeurab <- union(valeurid,valeurlev)
+ensminusab <- setdiff(1:n,bad_value)
+idtest <- sample(ensminusab, 0.3*n, replace=FALSE)
+Xtest <- data[idtest,"hir"] #data$hir[idtest]
+Ytest <- data[idtest,"dir"]
+Xtrain1 <- data[-idtest,"hir"] #il a les valeurs abh
+Ytrain1 <-data[-idtest,"dir"]
+ensminusabtest <- setdiff(ensminusab,idtest)
+Xtrain2 <- data[-ensminusabtest,"hir"]
+Ytrain2 <-data[-ensminusabtest,"dir"]
+
+
+reg1 <- lm(dir~hir, data = data[-idtest,])
+summary(reg1)
+
+reg2 <- lm(dir~hir, data = data[-ensminusabtest,])
+summary(reg2)
+
+hirtab1 <- data.frame(hir = sort(Xtest$hir))
+
+ytest1 <- predict(reg1,hirtab1,interval='conf',level=0.95)
+ytest2 <- predict(reg2,hirtab1,interval='conf',level=0.95)
+
+EQM1 <- sum((ytest1 - Ytest)^2/length(ytest1))
+EQM2 <- sum((ytest2 - Ytest)^2/length(ytest2))
+
+print(EQM1)
+print(EQM2)
+
+AIC(reg1)
+AIC(reg2)
+
+```
+
+L'erreur quadratique moyenne associée au modèle avec les valeurs aberrantes est plus petite que l'erreur quadratique moyenne associée au modèle sans les valeurs aberrantes. On en déduit que le modèle incluant les valeurs aberrantes est plus pertinent au point de vue prédictif. On remarque que c'est aussi le cas du point de vue de l'AIC, ce qui n'était pas attendu.
+
+#### Conclusion quant à ce premier modèle:
+
+Le modèle proposé n'est pas parfait, le coefficient de corrélation est inférieur à 0.8, il y a quelques valeurs aberrantes. Cependant l'hypothèse du modèle linéaire reste possible, la droite de régression n'est pas parfaite mais reste convenable.
+
+
+### Régression Dir et Lvr
+```{r, echo=FALSE}
+reg2 <- lm(dir~lvr, data = data)
+summary(reg2)
+```
+
+
+```{r, echo=FALSE, results="hide"}
+
+residus2 <- rstudent(reg2)
+n <- length(data$dir)
+plot(1:n, residus2, pch = 16, xlab = 'Index', ylab = 'Résidus studentisés',main = 'Valeurs aberrantes')
+abline(-2, 0, lty = 2)
+abline(2, 0, lty = 2)
+IDval.ab <- (1:n)[abs(residus2)>2]
+text(IDval.ab, residus2[IDval.ab], IDval.ab, pos = 4, col = 'blue')
+# val. aberrantes dans le nuage des points
+plot(data$lvr, data$dir, xlab = 'taille du pret / valeur du bien', ylab = 'dette', main = 'Données avec valeurs aberrantes et droite de regression')
+abline(coef(reg2), col = 'green')
+points(data$lvr[IDval.ab], data$dir[IDval.ab], col = 'blue', pch = 16)
+#text(data$lvr[IDval.ab], data$dir[IDval.ab], IDval.ab, pos = 4, col = 'blue')
+
+
+
+
+
+quant.t2 <- qt((1:n)/n,n-3)
+plot(quant.t2, sort(residus2), xlab = 'Student T(n-p-1)',
+     ylab = 'Quantiles empiriques des résidus', main = 'QQ-plot des résidus')
+abline(0, 1, col ='blue')
+
+AIC(reg2)
+
+
+```
+
+```{r, echo= FALSE, results= "hide"}
+par(mfrow = c(2,2))
+plot(1:n,residus2,main="résidus studentisé par rapport au temps",xlab="temps",ylab="résidu studentisé")
+lines(lowess(1:n,residus2),col="blue")
+plot(data$lvr,residus2, main="résidu studentisé par rapport à hir",xlab="hir",ylab="résidu studentisé")
+lines(lowess(data$lvr,residus2),col="blue")
+plot(data$dir,residus2, main="résidu studentisé par rapport à dir",xlab="dir",ylab="résidu studentisé")
+lines(lowess(data$dir,residus2,iter=1),col="blue")
+
+```
+
+Dans ce modèle, on conclut que les résidus studentisés suivent une loi de Student, donc que les vrais résidus sont indépendants. 
+On observe qu'il y a une tendance linéaire entre _dir_ et les résidus studentisés, cela contredit l'hypothese d' homoscédasticité. Cependant la linéarité de la tendance nous indique qu'il faudrait peut être faire une régression linéaire avec une transformation affine de _lvr_.
+
+
+#### Comparaison des deux modèles
+
+```{r, echo= FALSE}
+idtest <- sample(1:n, 0.5*n, replace=FALSE)
+Xtesthir <- data[idtest,"hir"] #data$hir[idtest]
+Xtestlvr <- data[idtest,"lvr"] #data$hir[idtest]
+Ytest <- data[idtest,"dir"]
+Xtrainhir <- data[-idtest,"hir"]
+Xtrainlvr <- data[-idtest,"lvr"]
+Ytrain1 <-data[-idtest,"dir"]
+reghir <- lm(dir~hir, data = data[-idtest,])
+reglvr <- lm(dir~lvr, data = data[-idtest,])
+hirtab <- data.frame(hir = sort(Xtesthir$hir))
+lvrtab <- data.frame(lvr = sort(Xtestlvr$lvr))
+ytest1 <- predict(reghir,hirtab,interval='conf',level=0.95)
+ytest2 <- predict(reglvr,lvrtab,interval='conf',level=0.95)
+
+EQMh <- sum((ytest1 - Ytest)^2/length(ytest1))
+EQMl <- sum((ytest2 - Ytest)^2/length(ytest2))
+
+
+dff<- data.frame(ModeleHir =c(AIC(mod.simple),EQMh), ModeleLvr=c(AIC(reg2),EQMl), row.names=c("AIC","EQM"))
+
+dff
+
+```
+
+L’EQM donne une information sur la performance prédictive du modèle, alors que l’AIC donne un compromis entre la complexité du modèle et sa qualité.
+
+Le modèle avec _Hir_ comme variable explicative est meilleur au sens de l’AIC, et celui avec _Lvr_ comme variable explicative est préférable au sens de la prédiction. Cependant les deux EQM sont très proches contrairement aux AIC.
+
+## Régression linéaire multiple
+
+Dans notre jeu de données nous avons 3 variables quantitatives _dir_, _hir_ et _lvr_. Pour prédire _dir_ avec un modèle linéaire multiple, la seule combinaison de variables explicatives possible est hir+lvr. Il n'est donc pas intéressant de faire une sélection de variables.
+
+
+```{r, echo=FALSE}
+reg.mult <- lm(dir ~ hir + lvr, data = data)
+summary(reg.mult)
+
+```
+
+On rejette le test de fisher global sans scrupule, la p-value est de l'ordre de 10^-16^. Au moins 1 des coefficients est non nul, le modèle ajuste mieux _dir_ que la constante. Si on analyse coefficient par coefficient, la constante et beta~1~ sont non nuls presque sûrement et on rejette aussi le fait que beta~2~ soit nul au niveau 0.001%.
+
+
+```{r, echo=FALSE , results= "hide"}
+#par(mfrow = c(2,1))
+plot(data$hir, data$dir)
+abline(coef(reg.mult)[1], coef(reg.mult)[2])
+plot(data$lvr, data$dir)
+abline(coef(reg.mult)[1], coef(reg.mult)[3])
+par(mfrow=c(1,1))
+```
+
+La droite de pente beta~1~ est similaire à la droite de regression obtenue avec seulement _hir_ comme variable explicative.
+Même commentaire pour la droite de pente beta~2~.
+On conclut que chaque variable explicative ajuste bien _dir_ dans ce modèle. Le modèle semble juste, ce qui se confirme par les quelques graphes suivants.
+
+```{r, echo=FALSE , results= "hide"}
+plot(reg.mult)
+```
+On n'analyse pas le QQ-plot (car on sait que les résidus standardisés ne suivent pas une loi Normal, même sous les hypothèses vérifiés, car on les divise par la variance empirique qui elle même dépend des autres erreurs) et les autres graphes nous montrent que les résidus semblent indépendants et qu'il n'y a pas de tendance particulière; donc il y a homoscédasticité et indépendance des résidus.
+
+#### On ajoute deny dans le modèle
+Ayant peu de variables quantitatives, nous allons tout de même ajouter _deny_, une variable qualitative, qui nous intéresse particulièrement.
+
+```{r, echo=FALSE , results= "hide"}
+reg.mult2<-lm(dir~hir+lvr+deny, data=data)
+summary(reg.mult2)
+
+plot
+```
+
+En effet, le coefficient associé à _deny_ est non nul. Cependant, chercher des points leviers et des valeurs aberrantes est plus compliqué avec ce nouveau modèle. Pour confirmer la validité du modèle, nous allons le comparer avec le précédent.
+
+La deuxième régression linéaire n'en est pas vraiment une à cause de la présence d'une variable explicative qui est qualitative, or l'AIC est un critère qui s'applique uniquement aux modèles linéaires, donc on ne peut pas l'utiliser. On utilise donc l'EQM:
+
+```{r, echo = FALSE, results="hide"}
+n <- length(data$dir)
+
+idtest <- sample(1:n, 0.5*n, replace=FALSE)
+Xtestnc <- data[idtest,c("hir","lvr")] 
+Xtestc <- data[idtest,c("hir","lvr","deny")] #data$hir[idtest]
+Ytest <- data[idtest,"dir"]
+Xtrainnc <- data[-idtest,c("hir","lvr")]
+Xtrainc <- data[-idtest,c("hir","lvr","deny")]
+Ytrainc <-data[-idtest,"dir"]
+regnc <- lm(dir~hir+lvr, data = data[-idtest,])
+regc <- lm(dir~hir+lvr+deny, data = data[-idtest,])
+nctab <- data.frame(hir = sort(Xtestnc$hir),lvr = sort(Xtestnc$lvr) )
+ctab <- data.frame(hir = sort(Xtestc$hir),lvr = sort(Xtestc$lvr), deny=sort(Xtestc$deny))
+ytest1 <- predict(regnc,nctab,interval='conf',level=0.95)
+ytest2 <- predict(regc,ctab,interval='conf',level=0.95)
+
+EQMh <- sum((ytest1 - Ytest)^2/length(ytest1))
+EQMl <- sum((ytest2 - Ytest)^2/length(ytest2))
+
+
+dff<- data.frame(ModeleHirLvr =c(EQMh), ModeleHirLvrDeny=c(EQMl), row.names=c("EQM"))
+
+dff
+```
+
+Les deux EQM sont très similaires, mais on choisira celui avec la variable _deny_.
+
+# ANOVA
+
+Le jeu de donnée contient beaucoup de variables qualitatives; effectuer une analyse de la variance pour estimer _dir_ semble donc productif. Cependant il est important de noter que les résultats obtenus dans cette analyse auront un but explicatif. En effet, nous allons essayer de chercher des facteurs qui peuvent influencer _dir_ mais nous ne pourrons pas utiliser ces résultats dans un but prédictif comme nous l'avons fait précédemment.
+
+Commençons avec un modèle à un facteur. Nous aimerions savoir si _deny_ impact _dir_.
+
+```{r, echo=FALSE , results= "hide"}
+new_data <- data[,-1:-3]
+boxplot(data$dir ~ data$deny, xlab='empreint refusé', ylab= "Dir")
+```
+
+Il semblerait que la dette chez les individus qui ont obtenu leur prêt est légèrement inférieur à celle des individus du deuxième groupe.
+Cette différence est-elle réellement significative?
+
+```{r, echo=FALSE}
+AV1<-lm(dir~deny,data=data)
+summary(AV1)
+```
+
+On constate que le test, qui suppose l'égalité entre les moyennes des deux groupes, est fortement rejeté. On pourrait conclure que si notre demande de prêt est refusée, on a plus de chance d'avoir un gros ratio dette/revenu.
+Cependant avant de tirer toute conclusion, vérifions que le modèle vérifie bien les conditions requises et plus précisément que les erreurs sont bien gaussiennes.
+
+```{r, echo=FALSE}
+res1<-rstudent(AV1)
+ID<-(1:length(data$ccs))[abs(res1)>2]
+length(ID)
+
+```
+
+Il y a seulement 62 valeurs aberrantes (sur 2381 valeurs en tout), on peut supposer que les erreurs sont bien gaussiennes et donc le modèle est valide.
+
+
+```{r, echo=FALSE }
+data_quali=data[,-c(2,3)]
+head(data_quali)
+
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+
+```
+
+Tout comme la régression linéaire on suppose dans l'analyse de la variance que les résidus sont gaussiens; vérifions cette hypothèse pour valider le modèle.
+
+```{r, echo=FALSE }
+res<-rstudent(AV)
+ID<-(1:length(data_quali$ccs))[abs(res)>2]
+
+quant.t2 <- qt((1:length(res))/length(res),length(res)-3)
+plot(quant.t2, sort(res), xlab = 'Student T(n-p-1)',
+     ylab = 'Quantiles empiriques des résidus', main = 'QQ-plot des résidus')
+abline(0, 1, col ='blue')
+#length(ID)
+```
+
+Il y a 71 résidus studentisés qui ont une valeur supérieur en valeur absolue à 2. Or si les vrais résidus suivent une loi gaussienne on devrait avoir 95% des résidus studentisés compris entre [-2,2], il y a en tout plus de 2000 résidus donc on a bien plus de 95% des résidus qui sont compris entre -2 et 2 on peut supposer l'hypothèse de normalité des résidus juste. Le modèle semble donc correct.
+
+Cependant on aimerait aussi analyser l'interaction entre les variables explicatives mais pour cela il va falloir réduire le nombre de variables explicatives car il y a pour l'instant 10 variables. Donc en ajoutant les interaction entre chaque variables cela nous fait 2^10^ composantes à analyser, ce qui n'est humainement pas possible.
+
+Nous allons donc sélectionner les variables les plus pertinentes en comparant les modèles avec moins de variables. Sauf qu'il y a 10^2^ modèles à comparer, ce qui est encore une fois inimaginable, nous allons donc utiliser une méthode descendante et éliminer à chaque étape la variable la moins pertinente d'après le test de fisher, nous montrerons les résultats des tests pour les premières variables uniquement.
+
+Dans le modèle précédent, _Condominium_ est la variable dont la p-valeur du test de fisher associé est la plus élevée on va donc la retirer du modèle.
+
+```{r, echo=FALSE}
+#data_quali=data_quali[,-9]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+
+De la même manière, on retire _single_, et on réitère le procédé de l'analyse de la variance, mais en masquant les résultats de R car ceux-ci sont trop longs..
+
+```{r, echo= FALSE, results="hide"}
+#data_quali=data_quali[,-7]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+
+on retire _dmi_. 
+
+```{r, echo=FALSE, results="hide" }
+#data_quali=data_quali[,-5]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+
+on retire _mcs_.
+
+```{r, echo=FALSE, results="hide" }
+#data_quali=data_quali[,-3]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+
+On retire _uria_.
+
+```{r, echo=FALSE , results= "hide"}
+#data_quali=data_quali[,-5]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+ 
+On retire _self_.
+ 
+```{r, echo=FALSE , results= "hide"}
+#data_quali=data_quali[,-4]
+AV<-lm(dir~.,data=data_quali)
+anova(AV)
+```
+
+Il nous reste donc 4 variables explicatives, l'analyse de la variance avec interaction est maintenant possible.
+
+```{r, echo= FALSE}
+AV_inte<-lm(dir~ccs+pbcr+black+deny+ccs*pbcr+ccs*black+ccs*deny+pbcr*black+pbcr*deny+black*deny+ccs*pbcr*black+ccs*pbcr*deny+ccs*black*deny+pbcr*black*deny+ccs*black*deny+ccs*pbcr*black*deny, data=data_quali)
+anova(AV_inte)
+```
+
+
+
+#### Conclusion :
+
+On voit que _deny_ est _pbcr_ influence _dir_. on peut aussi affirmer au niveau 0.01% que _ccs_ et _black_ ont un impact sur _dir_. D'autre part, la plupart des interactions entre ces variables n'ont pas d'influence sur dir à l'exception des interactions entre _ccs_ avec _pbcr_ ou _deny_. Il est d'ailleurs assez surprenant qu'on puisse considérer au niveau 5% que l'interaction entre _ccs_, _deny_ et _pbcr_ influence la valeur de _dir_ tandis qu'il y a plus d'une chance sur trois que l'impact de l'interaction entre _deny_ et _pcbr_ soit nul.
+
+On peut encore se poser une dernière question ; est ce que le modèle avec quelque variable mais aussi leur interaction et plus pertinent qu'un modèle considérant plus de variables sans leur interaction.
+Pour répondre à cette question nous allons comparer le dernière modèle qu'on a construit avec le modèle composé des 10 variables qualitatives du modèle. On compare donc les EQM des deux modèles.
+
+```{r, echo=FALSE , results= "hide"}
+
+n<-length(data$dir)
+ID<-c(1:n)
+train=sample(ID,n/2)
+data_quali_train=data_quali[train,]
+data_quali_test=data_quali[-train,]
+data_quali2_train=data[train,-c(2,3)]
+data_quali2_test=data[-train,-c(2,3)]
+
+mod1<-lm(dir~.,data=data_quali2_train)
+mod2<-lm(dir~ccs+pbcr+black+deny+ccs*pbcr+ccs*black+ccs*deny+pbcr*black+pbcr*deny+black*deny+ccs*pbcr*black+ccs*pbcr*deny+ccs*black*deny+pbcr*black*deny+ccs*black*deny+ccs*pbcr*black*deny, data=data_quali_train)
+
+ytest1 <- predict(mod1,data_quali_test,interval='conf',level=0.95)
+ytest2 <- predict(mod2,data_quali2_test,interval='conf',level=0.95)
+
+EQMA <- sum((ytest1[1] - data_quali_test$dir)^2/length(ytest1))
+EQMB <- sum((ytest2[1] - data_quali2_test$dir)^2/length(ytest2))
+
+EQMA
+EQMB
+
+```
+
+Pour comparer les deux modèles on ne compare pas les erreurs quadratiques moyenne de prédiction (comme on l’a fait dans la regression linéaire) mais l'erreur quadratique moyenne car l'ANOVA a un but explicatif et non prédictif.
+
+Les EQM sont très proches (0.003113688, et 0.003120243), et on conclut que le modèle avec toutes les variables explicatives approche mieux les vrais valeurs du jeu de données de test.
+
+
+# Conclusion
+
+Lors de notre analyse des données, nous nous sommes concentrés sur les conclusions que l'on pouvait porter sur _dir_ (le ratio dette/revenu total). Nous avons pour cela utilisé deux approches. La première consiste à construire des modèles linéaire afin de prédire _dir_. Nous avons pour cela construit, validé et comparé differents modèles linéaires simples et multiples et nous avons conclut que le meilleur modèle etait la régression multiple composé des variables explicatives _hir_ et _lvr_. Cependant, le modèle construit avec _hir_, _lvr_ et _deny_ (modèle non linéaire étant donné que _deny_ n'est pas une variable quantitative) est encore meilleur. La seconde approche consiste à expliquer les données et notamment trouver les variables qualitatives qui influencent le plus _dir_ via une analyse de la variance. On a ainsi déterminé quelles sont les les variables et intéractions qui influent sur _dir_. On a par exemple conclut que le fait de voir sa demande de pret refusée ou bien d'avoir un dossier de mauvais crédit public peut engendrer un ratio dette/revenu total faible. A l'inverse, le fait d'être célibataire ou travailleur indépendant n'a pas de réel influence sur ce ratio.
+
+Enfin, prédire ou expliquer la dette d'un individu suivant la réponse de sa demande de prêt ( _deny_ ) peut paraître hasardeux; il serait plus logique d'effectuer l'opération inverse, c'est a dire, d'expliquer la réponse de la demande de prêt par le niveau de dette. Néanmoins, cela nécessiterait des outils plus complexes comme la régression logistique que nous n'avons pas encore aborder.
+Tout modèle considéré, nous pouvons conclure que notre base de donnée n'est pas la plus adaptée au modèle linéaire Gaussien, mais que celui-ci et l'ANOVA sont tout de même des outils puissants pour effectuer des prédictions ou pour expliquer des variables.
+
+## Ouverture
+
+Parmi les objectifs initiaux de cette étude figurait celui de prédire la variable _deny_, et plus particulièrement, de mesurer l’impact de la variable _black_. On s'est donc demandé si l'hypothèse de dépendance de la variable _black_ avec _deny_ était ou non rejetée. On effectue un test d'indépendance du Khi deux. Il serait judicieux d'effectuer une régression logistique, mais elle ne sera pas abordée dans ce projet.
+
+```{r, echo=FALSE}
+
+#boxplot(dir~ccs:black, data = data[-1095,-c(2,3)] , xlab="deny"  )
+#with(data[-1095,-c(2,3)], interaction.plot(deny, pbcr, dir))
+#with(data[-1095,-c(2,3)], interaction.plot(deny, black, dir))
+
+qualitative = data[-1095,-c(2,3)]
+
+dff<- data.frame(black =c(1,1,339), white=c(1,1,2041), total = c(2096,284, 2380), row.names=c("Pret accepte","Pret Refuse", "total"))
+v1 <- sum(qualitative$black=="yes" & qualitative$deny=="yes") # ou dim(qualitative[qualitative$black=="yes" & qualitative$deny=="yes", ])
+v2 <- sum(qualitative$black=="yes" & qualitative$deny=="no")
+v3 <- sum(qualitative$black=="no" & qualitative$deny=="yes")
+v4 <- sum(qualitative$black=="no" & qualitative$deny=="no")
+
+dff[1,1]= v2
+dff[1,2]= v4
+dff[2,1]= v1
+dff[2,2]= v3
+
+dff
+```
+
+```{r, echo= FALSE, results="hide"}
+chisq.test(dff)
+qchisq(0.95,df=1)
+```
+
+
+On obtient une p-value < 2.2e-16. 
+On remarque par le test d'indépendance du Khi deux, qu'on peut rejeter l'hypothèse d'indépendance entre les deux variables, avec une p-value de l'ordre de 10^-5^. Cette méthode est-elle suffisante pour affirmer une discrimination envers les clients de couleur noire?
